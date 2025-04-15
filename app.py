@@ -1,78 +1,46 @@
-from flask import Flask, request, redirect, url_for, session, send_file, send_from_directory
-import json, os
+from flask import Flask, render_template, request, redirect, url_for, flash
 
 app = Flask(__name__)
-app.secret_key = 'hine_secret_key'
 
-USER_FILE = 'users.json'
+# Secret key for session management (for flash messages, etc.)
+app.secret_key = 'your_secret_key'
 
-# Load or create user data file
-if not os.path.exists(USER_FILE):
-    with open(USER_FILE, 'w') as f:
-        json.dump({}, f)
+# Sample data for login validation (this should be replaced by a database or authentication system)
+users = {
+    'testuser': 'password123'
+}
 
-def load_users():
-    with open(USER_FILE, 'r') as f:
-        return json.load(f)
-
-def save_users(users):
-    with open(USER_FILE, 'w') as f:
-        json.dump(users, f)
-
-@app.route('/')
-def home():
-    return redirect(url_for('login'))
-
-@app.route('/register', methods=['GET', 'POST'])
-def register():
+# Home route
+@app.route('/', methods=['GET', 'POST'])
+def index():
     if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-        users = load_users()
-        if username in users:
-            return send_file('register.html')  # send without template rendering
-        users[username] = password
-        save_users(users)
-        return redirect(url_for('login'))
-    return send_file('register.html')
+        username = request.form.get('username')
+        password = request.form.get('password')
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-        users = load_users()
+        # Validate login credentials
         if username in users and users[username] == password:
-            session['username'] = username
-            return redirect(url_for('main'))
+            flash("Login Successful!", "success")
+            return redirect(url_for('dashboard'))
         else:
-            return send_file('login.html')  # fallback on failed login
-    return send_file('login.html')
+            flash("Invalid credentials, please try again.", "error")
+    
+    return render_template('index.html')
 
-@app.route('/main')
-def main():
-    if 'username' not in session:
-        return redirect(url_for('login'))
-    return send_file('main.html')
+# Dashboard route (protected page after successful login)
+@app.route('/dashboard')
+def dashboard():
+    return render_template('dashboard.html')
 
-@app.route('/index.css')
-def serve_css():
-    return send_file('index.css')
+# Route to toggle dark mode
+@app.route('/toggle_dark_mode', methods=['POST'])
+def toggle_dark_mode():
+    # Toggle dark mode via session or other method
+    dark_mode = request.form.get('dark_mode', 'false')
+    if dark_mode == 'true':
+        return render_template('index.html', dark_mode=True)
+    else:
+        return render_template('index.html', dark_mode=False)
 
-@app.route('/main.css')
-def serve_main_css():
-    return send_file('main.css')
-
-@app.route('/logout')
-def logout():
-    session.pop('username', None)
-    return redirect(url_for('login'))
-
-@app.route('/download/<filename>')
-def download(filename):
-    if 'username' not in session:
-        return redirect(url_for('login'))
-    return send_from_directory('downloads', filename, as_attachment=True)
-
+# Run the application
 if __name__ == '__main__':
     app.run(debug=True)
