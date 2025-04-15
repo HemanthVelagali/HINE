@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory
+from flask import Flask, request, redirect, url_for, session, send_file, send_from_directory
 import json, os
 
 app = Flask(__name__)
@@ -30,11 +30,11 @@ def register():
         password = request.form['password']
         users = load_users()
         if username in users:
-            return render_template('register.html', error='Username already exists')
+            return send_file('register.html')  # send without template rendering
         users[username] = password
         save_users(users)
         return redirect(url_for('login'))
-    return render_template('register.html')
+    return send_file('register.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -46,25 +46,33 @@ def login():
             session['username'] = username
             return redirect(url_for('main'))
         else:
-            return render_template('login.html', error='Invalid username or password')
-    return render_template('login.html')
+            return send_file('login.html')  # fallback on failed login
+    return send_file('login.html')
 
 @app.route('/main')
 def main():
     if 'username' not in session:
         return redirect(url_for('login'))
-    return render_template('main.html', username=session['username'])
+    return send_file('main.html')
+
+@app.route('/index.css')
+def serve_css():
+    return send_file('index.css')
+
+@app.route('/main.css')
+def serve_main_css():
+    return send_file('main.css')
+
+@app.route('/logout')
+def logout():
+    session.pop('username', None)
+    return redirect(url_for('login'))
 
 @app.route('/download/<filename>')
 def download(filename):
     if 'username' not in session:
         return redirect(url_for('login'))
     return send_from_directory('downloads', filename, as_attachment=True)
-
-@app.route('/logout')
-def logout():
-    session.pop('username', None)
-    return redirect(url_for('login'))
 
 if __name__ == '__main__':
     app.run(debug=True)
